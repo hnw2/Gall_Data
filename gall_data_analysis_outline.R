@@ -106,10 +106,19 @@ gall_presence %>%
 #---#
 
 ## Does total number of galls per plant vary by treatment?
-galltotals_df <- gall_data %>% 
-  dplyr::group_by(Graze, Fire) %>%
-  count(GallTotal) %>%
-  dplyr::rename(N_Plants = n)
+gall_totals <- gall_data %>% 
+  dplyr::group_by(Fire, Graze, Treatment) %>% 
+  dplyr::summarize(GallTotal = sum(GallTotal), PlantTotal = n()) %>%
+  dplyr::mutate(GallsperPlant = GallTotal / PlantTotal) # calculate galls per plant to account for dif sample sizes
+
+# perform Kruskal-Wallis rank sum test for significant differences in gall totals by treatment
+kruskal.test(GallTotal ~ Fire, data = gall_totals)
+kruskal.test(GallTotal ~ Graze, data = gall_totals)
+kruskal.test(GallTotal ~ Treatment, data = gall_totals)
+kruskal.test(GallsperPlant ~ Fire, data = gall_totals)
+kruskal.test(GallsperPlant ~ Graze, data = gall_totals)
+kruskal.test(GallsperPlant ~ Treatment, data = gall_totals)
+# no significant differences identified
 
 # frequency plot of gall totals by treatment   
 ggplot(gall_data, aes(x = GallTotal, color = Treatment)) + 
