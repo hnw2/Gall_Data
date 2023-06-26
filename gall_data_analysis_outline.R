@@ -112,6 +112,7 @@ gall_totals <- gall_data %>%
   dplyr::mutate(GallsperPlant = GallTotal / PlantTotal) # calculate galls per plant to account for dif sample sizes
 
 # perform Kruskal-Wallis rank sum test for significant differences in gall totals by treatment
+# Note: Kruskal-Wallis test is a non-parametric test comparable to ANOVA, but does not make any underlying assumptions (ie linearity, normality) about the data
 kruskal.test(GallTotal ~ Fire, data = gall_totals)
 kruskal.test(GallTotal ~ Graze, data = gall_totals)
 kruskal.test(GallTotal ~ Treatment, data = gall_totals)
@@ -131,6 +132,19 @@ ggplot(gall_data, aes(x = GallTotal, after_stat(density), color = Treatment)) +
   geom_freqpoly(binwidth = 50, lwd = 1.2, alpha = 0.5) + 
   theme_bw() + 
   labs(x = "Gall Total", y = "Plant Count Density", title = "Gall Total per Plant")
+
+## Do gall totals vary between transects within treatment?
+galltotals_transect <- gall_data %>%
+  dplyr::select(c(Fire, Graze, Treatment, Transect, Transectside, PlantVol_cm3, GallTotal, GallperVol)) %>%
+  group_by(Treatment, Transect, Transectside) %>%
+  dplyr::summarise(meanPlantVol = mean(PlantVol_cm3), 
+                   meanGalls = mean(GallTotal), 
+                   meanGallperVol = mean(GallperVol))
+# loop through treatments and check for differences between transects
+
+
+
+
 
 # Are there variations in gall type across treatment? 
 gall_type_counts <- gall_long_df %>%
