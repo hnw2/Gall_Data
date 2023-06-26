@@ -10,9 +10,10 @@ library(tidyverse) # data formatting and plotting
 library(kableExtra) # pretty tables
 library(ggsci) # colors
 library(emmeans) # treatment contrasts
+library(rstatix) # dplyr-friendly stat  calculations
 
-# set directory 
-setwd("path/to/gall/data/folder")
+# set directory if working outside RProj
+# setwd("path/to/gall/data/folder")
 
 # load data
 gall_data <- readxl::read_xlsx("./data/Gall Data '23.xlsx", sheet = "Gall Data")
@@ -35,10 +36,13 @@ gall_data <- dplyr::mutate(gall_data,
 # add columns for each treatment type
 gall_data <- dplyr::mutate(gall_data,
                            Fire = factor(ifelse(PastureID == "1B" | PastureID == "2B" | PastureID == "EX-2B",
-                                         "Burn", "NoBurn")),
+                                         "Burn", "NoBurn"), levels = c("NoBurn", "Burn")),
                            Graze = factor(ifelse(PastureID == "1B" | PastureID == "2A", "Spring",
-                                          ifelse(PastureID == "1A" | PastureID == "2B", "Fall", "NoGraze"))),
-                           Treatment = factor(paste0(Graze, "_", Fire)))
+                                          ifelse(PastureID == "1A" | PastureID == "2B", "Fall", "NoGraze")), 
+                                          levels = c("NoGraze", "Spring", "Fall")),
+                           Treatment = factor(paste0(Graze, "_", Fire), 
+                                              levels = c("NoGraze_NoBurn", "Spring_NoBurn", "Fall_NoBurn",
+                                                         "NoGraze_Burn", "Spring_Burn", "Fall_Burn")))
 gall_data <- dplyr::relocate(gall_data, c(Fire, Graze, Treatment), .after = PastureID)
 
 # replace NA values
@@ -133,32 +137,65 @@ ggplot(gall_data, aes(x = GallTotal, after_stat(density), color = Treatment)) +
   theme_bw() + 
   labs(x = "Gall Total", y = "Plant Count Density", title = "Gall Total per Plant")
 
+#---#
+
 ## Do gall totals vary between transects within treatment?
 galltotals_transect <- gall_data %>%
   dplyr::select(c(Fire, Graze, Treatment, Transect, Transectside, PlantVol_cm3, GallTotal, GallperVol)) %>%
-  group_by(Treatment, Transect, Transectside) %>%
+  group_by(Treatment, Transect) %>%  # you could add Transectside as a grouping variable to check if transect side is important
   dplyr::summarise(meanPlantVol = mean(PlantVol_cm3), 
                    meanGalls = mean(GallTotal), 
-                   meanGallperVol = mean(GallperVol))
-# loop through treatments and check for differences between transects
+                   meanGallperVol = mean(GallperVol)) %>%
+  dplyr::arrange(Treatment, Transect)
 
+# Test for differences of gall totals within treatment between transects
+gall_data %>% group_by(Treatment) %>% rstatix::kruskal_test(GallTotal ~ Transect) # Note: p-value of true significance is .05 / 6 = .0083 (6 levels)
+gall_data %>% group_by(Fire) %>% rstatix::kruskal_test(GallTotal ~ Transect) # Note: p-value of true significance is .05 / 2 = .025 (2 levels)
+gall_data %>% group_by(Graze) %>% rstatix::kruskal_test(GallTotal ~ Transect) # Note: p-value of true significance is .05 / 3 = .017 (3 levels)
 
+# Test for differences of gall per plant volumne within treatment between transects
+# Note: p-value of true significance is .05 / 6 = .0083 (6 treatments)
+gall_data %>% group_by(Treatment) %>% rstatix::kruskal_test(GallperVol ~ Transect)
+gall_data %>% group_by(Fire) %>% rstatix::kruskal_test(GallperVol ~ Transect)
+gall_data %>% group_by(Graze) %>% rstatix::kruskal_test(GallperVol ~ Transect)
 
+# patterns look similar between measures of total galls and galls per volume
 
+# visualize gall totals within treatment by transect
+ggplot(gall_data, aes(x = Transect, y = GallTotal, fill = Transectside)) + 
+  geom_col() + 
+  facet_wrap(vars(Treatment)) +
+  scale_fill_aaas() + 
+  theme_bw() + 
+  ggtitle("Gall Total By Treatment, Transect")
+# most galls come from east side of transects
 
-# Are there variations in gall type across treatment? 
+#---#
+
+# get number of gall types
+n_galls <- length(unique(gall_long_df$GallType))
+
+## Are there variations in gall type across treatment? 
 gall_type_counts <- gall_long_df %>%
   dplyr::group_by(Treatment, GallType) %>%
   dplyr::count(GallCount)
 
 # playing with colors and themes in plots
-# gall counts by pasture
-ggplot(gall_long_df, aes(x = PastureID, y = GallCount, fill = GallType)) + 
+# gall counts by treatment
+ggplot(gall_long_df, aes(x = Treatment, y = GallCount, fill = GallType)) + 
   geom_col() + 
   facet_grid(cols = vars(Fire), scales = "free_x") + 
   theme_bw() +
+  theme(axis.text.x = element_text(angle=45, hjust = 1)) +
   scale_fill_ucscgb() +
-  ggtitle("Total Galls per Pasture, by Fire Treatment and Gall Type")
+  ggtitle("Total Galls by Treatment and Gall Type")
+ggplot(gall_long_df, aes(x = Treatment, y = GallCount, fill = GallType)) + 
+  geom_col() + 
+  facet_grid(cols = vars(Graze), scales = "free_x") + 
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=45, hjust = 1)) +
+  scale_fill_ucscgb() +
+  ggtitle("Total Galls by Treatment and Gall Type")
 
 # call counts by fire treatment
 ggplot(gall_long_df, aes(x = Fire, y = GallCount, fill = GallType)) + 
