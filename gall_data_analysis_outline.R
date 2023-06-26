@@ -15,8 +15,7 @@ library(emmeans) # treatment contrasts
 setwd("path/to/gall/data/folder")
 
 # load data
-# gall_data <- readxl::readxlsx("~/Gall Data '23.xlsx", sheet = "Gall Data")
-gall_data <- readxl::read_xlsx("./Gall Data '23.xlsx", sheet = "Gall Data")
+gall_data <- readxl::read_xlsx("./data/Gall Data '23.xlsx", sheet = "Gall Data")
 
 # overview df
 str(gall_data)
@@ -55,14 +54,15 @@ gall_data$GallTotal <- rowSums(galls)
 
 # add galls per plant volume
 gall_data <- gall_data %>%
-  dplyr::mutate(GallperVol = GallTotal/PlantVol_cm3) %>%
-  dplyr::filter(PlantVol_cm3 != 0)
+  dplyr::filter(PlantVol_cm3 != 0) %>% # remove two rows with vol=0
+  dplyr::mutate(GallperVol = GallTotal/PlantVol_cm3) # calculate galls by plant vol
+  
 
 # check the data again
 str(gall_data)
 
 # create pivot df for plotting
-gall_plot_df <- gall_data %>%
+gall_long_df <- gall_data %>%
   pivot_longer(cols = c(DaisyGall:Greenthorn),
                names_to = "GallType",
                values_to = "GallCount") %>%
@@ -115,13 +115,13 @@ ggplot(gall_data, aes(x = GallTotal, after_stat(density), color = Treatment)) +
   labs(x = "Gall Total", y = "Plant Count Density", title = "Gall Total per Plant")
 
 # Are there variations in gall type across treatment? 
-gall_type_counts <- gall_plot_df %>%
+gall_type_counts <- gall_long_df %>%
   dplyr::group_by(Treatment, GallType) %>%
   dplyr::count(GallCount)
 
 # playing with colors and themes in plots
 # gall counts by pasture
-ggplot(gall_plot_df, aes(x = PastureID, y = GallCount, fill = GallType)) + 
+ggplot(gall_long_df, aes(x = PastureID, y = GallCount, fill = GallType)) + 
   geom_col() + 
   facet_grid(cols = vars(Fire), scales = "free_x") + 
   theme_bw() +
@@ -129,21 +129,21 @@ ggplot(gall_plot_df, aes(x = PastureID, y = GallCount, fill = GallType)) +
   ggtitle("Total Galls per Pasture, by Fire Treatment and Gall Type")
 
 # call counts by fire treatment
-ggplot(gall_plot_df, aes(x = Fire, y = GallCount, fill = GallType)) + 
+ggplot(gall_long_df, aes(x = Fire, y = GallCount, fill = GallType)) + 
   geom_col() + 
   theme_minimal() +
   scale_fill_igv(palette = "default") +
   ggtitle("Total Galls per Fire Treatment, by Gall Type")
 
 # gall counts by graze treatment
-ggplot(gall_plot_df, aes(x = Graze, y = GallCount, fill = GallType)) + 
+ggplot(gall_long_df, aes(x = Graze, y = GallCount, fill = GallType)) + 
   geom_col() + 
   theme_light() +
   scale_fill_d3(palette = "category20b") +
   ggtitle("Total Galls per Graze Treatment, by Gall Type")
 
 # gall counts by treatment combo
-ggplot(gall_plot_df, aes(x = Treatment, y = GallCount, fill = GallType)) + 
+ggplot(gall_long_df, aes(x = Treatment, y = GallCount, fill = GallType)) + 
   geom_col() + 
   theme_light() +
   scale_fill_d3(palette = "category20b") +
@@ -151,7 +151,7 @@ ggplot(gall_plot_df, aes(x = Treatment, y = GallCount, fill = GallType)) +
   ggtitle("Total Galls per Graze:Fire Treatment, by Gall Type")
 
 # average gall count and galls per plant vol by gall type
-gall_averages <- gall_plot_df %>%
+gall_averages <- gall_long_df %>%
   group_by(Fire, Graze, GallType) %>%
   summarize(avgpervol = mean(GallCountperVol),
             avgct = mean(GallCount)) %>%
@@ -185,11 +185,11 @@ ggplot(daisies, aes(x = Fire, y = GallCountperVol, fill = Graze)) +
   geom_violin(draw_quantiles = TRUE) + 
   ggtitle("Daisy Gall Count per Plant Volume by Treatment")
 
-ggplot(gall_plot_df, aes(x = Graze, y = GallCountperVol, fill = GallType)) + 
+ggplot(gall_long_df, aes(x = Graze, y = GallCountperVol, fill = GallType)) + 
   geom_col() + facet_grid(cols = vars(Fire)) + 
   ggtitle("Total Galls per Plant Volume by Fire, Graze Treatments and Gall Type")
 
-ggplot(gall_plot_df, aes(x = Graze, y = GallCount, fill = GallType)) + 
+ggplot(gall_long_df, aes(x = Graze, y = GallCount, fill = GallType)) + 
   geom_col() + facet_grid(cols = vars(Fire)) + 
   ggtitle("Total Gall Counts by Fire, Graze Treatments and Gall Type")
 
