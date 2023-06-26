@@ -93,10 +93,19 @@ gall_binary %>%
 gall_presence <- gall_binary %>%
   dplyr::group_by(Treatment, GallsPresent) %>%
   dplyr::summarize(PlantCount = n()) %>%
-  dplyr::mutate(Prop = PlantCount / sum(PlantCount))
+  dplyr::mutate(Prop = round(PlantCount / sum(PlantCount), 3)) %>%
+  dplyr::mutate(GallsPresent = ifelse(GallsPresent ==0, "No", "Yes"))
 
+# Example of making a pretty table. 
+# See kableExtra user guide for more options: https://cran.r-project.org/web/packages/kableExtra/vignettes/awesome_table_in_html.html
+gall_presence %>%
+  kbl(caption = "Gall Presence by Treatment") %>% # create table and give it a title
+  kable_classic_2(full_width = F) %>%  # formatting
+  save_kable("./viz/gall_presence_table.png")  # save it as a .png file
 
-# Does total number of galls per plant vary by treatment?
+#---#
+
+## Does total number of galls per plant vary by treatment?
 galltotals_df <- gall_data %>% 
   dplyr::group_by(Graze, Fire) %>%
   count(GallTotal) %>%
