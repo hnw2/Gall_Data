@@ -15,8 +15,7 @@ library(emmeans) # treatment contrasts
 setwd("path/to/gall/data/folder")
 
 # load data
-# gall_data <- readxl::readxlsx("~/Gall Data '23.xlsx", sheet = "Gall Data")
-gall_data <- readxl::read_xlsx("./Gall Data '23.xlsx", sheet = "Gall Data")
+gall_data <- readxl::read_xlsx("./data/Gall Data '23.xlsx", sheet = "Gall Data")
 
 # overview df
 str(gall_data)
@@ -55,8 +54,9 @@ gall_data$GallTotal <- rowSums(galls)
 
 # add galls per plant volume
 gall_data <- gall_data %>%
-  dplyr::mutate(GallperVol = GallTotal/PlantVol_cm3) %>%
-  dplyr::filter(PlantVol_cm3 != 0)
+  dplyr::filter(PlantVol_cm3 != 0) %>% # remove two rows with vol=0
+  dplyr::mutate(GallperVol = GallTotal/PlantVol_cm3) # calculate galls by plant vol
+  
 
 # check the data again
 str(gall_data)
