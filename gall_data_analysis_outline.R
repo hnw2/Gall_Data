@@ -175,10 +175,11 @@ ggplot(gall_data, aes(x = Transect, y = GallTotal, fill = Transectside)) +
 # get number of gall types
 n_galls <- length(unique(gall_long_df$GallType))
 
-## Are there variations in gall type across treatment? 
+# average galls per plant by gall type, treatment
 gall_type_counts <- gall_long_df %>%
-  dplyr::group_by(Treatment, GallType) %>%
-  dplyr::count(GallCount)
+  dplyr::group_by(Fire, Graze, GallType) %>%
+  dplyr::summarize(TotalCount = sum(GallCount), MeanCount = mean(GallCount), sdCount = sd(GallCount),
+                   TotalDensity = sum(GallCount)/sum(PlantVol_cm3), MeanDensity = mean(GallCountperVol), sdDensity = sd(GallCountperVol))
 
 # playing with colors and themes in plots
 # gall counts by treatment
@@ -219,13 +220,6 @@ ggplot(gall_long_df, aes(x = Treatment, y = GallCount, fill = GallType)) +
   theme(axis.text.x = element_text(angle=45, hjust = 1)) + 
   ggtitle("Total Galls per Graze:Fire Treatment, by Gall Type")
 
-# average gall count and galls per plant vol by gall type
-gall_averages <- gall_long_df %>%
-  group_by(Fire, Graze, GallType) %>%
-  summarize(avgpervol = mean(GallCountperVol),
-            avgct = mean(GallCount)) %>%
-  mutate(Treatment = paste(Fire, Graze, sep = "_"))
-
 
 
 
@@ -250,10 +244,6 @@ ggplot(gall_data, (aes(x = Fire, y = GallperVol, fill = Graze))) +
   geom_violin(draw_quantiles = TRUE) + 
   ggtitle("Total Galls per Plant Volume by Treatment")
 
-ggplot(daisies, aes(x = Fire, y = GallCountperVol, fill = Graze)) + 
-  geom_violin(draw_quantiles = TRUE) + 
-  ggtitle("Daisy Gall Count per Plant Volume by Treatment")
-
 ggplot(gall_long_df, aes(x = Graze, y = GallCountperVol, fill = GallType)) + 
   geom_col() + facet_grid(cols = vars(Fire)) + 
   ggtitle("Total Galls per Plant Volume by Fire, Graze Treatments and Gall Type")
@@ -262,3 +252,6 @@ ggplot(gall_long_df, aes(x = Graze, y = GallCount, fill = GallType)) +
   geom_col() + facet_grid(cols = vars(Fire)) + 
   ggtitle("Total Gall Counts by Fire, Graze Treatments and Gall Type")
 
+ggplot(gall_long_df, aes(x = PlantVol_cm3, y = GallCount)) + 
+  geom_point(aes(col = Treatment)) + 
+  facet_wrap(vars(GallType))
