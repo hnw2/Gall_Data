@@ -13,7 +13,7 @@ library(emmeans) # treatment contrasts
 library(rstatix) # dplyr-friendly stat  calculations
 
 # set directory if working outside RProj
-setwd("path/to/gall/data/folder")
+#setwd("path/to/gall/data/folder")
 
 # load data
 gall_data <- readxl::read_xlsx("./data/Gall Data '23.xlsx", sheet = "Gall Data")
@@ -132,13 +132,17 @@ ggplot(gall_binary, aes(x = GallsPresent, fill = as.factor(Transect))) +
 
 ## Does total number of galls per plant vary by treatment?
 gall_totals <- gall_data %>% 
-  dplyr::group_by(Fire, Graze) %>% 
-  dplyr::summarize(GallTotal = sum(GallTotal), PlantTotal = n(), TotalPlantVol = sum(PlantVol_cm3),
-                   MeanPlantVol = mean(PlantVol_cm3), MeanPlantDensity = mean(GallperVol)) %>%
+  dplyr::group_by(Fire, Graze, Treatment) %>% 
+  dplyr::summarize(GallTotal = sum(GallTotal), PlantTotal = n(), 
+                   TotalPlantVol = sum(PlantVol_cm3), MeanPlantVol = mean(PlantVol_cm3), sdPlantVol = sd(PlantVol_cm3),
+                   MeanPlantDensity = mean(GallperVol), sdPlantDensity = sd(GallperVol)) %>%
   dplyr::mutate(MeanGallsperPlant = GallTotal / PlantTotal) # calculate galls per plant to account for dif sample sizes
 
 # make table of gall totals
-kbl(gall_totals, caption = "Gall Summary by Treatment") %>%
+gall_totals %>%
+  select(!Treatment) %>%
+  relocate(MeanGallsperPlant, .after = PlantTotal) %>%
+  kbl(caption = "Gall Summary by Treatment") %>%
   kable_minimal(full_width = F) %>%
   save_kable("./viz/gall_summary_table.png")
 
@@ -147,16 +151,16 @@ kbl(gall_totals, caption = "Gall Summary by Treatment") %>%
 kruskal.test(GallTotal ~ Fire, data = gall_totals)
 kruskal.test(GallTotal ~ Graze, data = gall_totals)
 kruskal.test(GallTotal ~ Treatment, data = gall_totals)
-kruskal.test(GallsperPlant ~ Fire, data = gall_totals)
-kruskal.test(GallsperPlant ~ Graze, data = gall_totals)
-kruskal.test(GallsperPlant ~ Treatment, data = gall_totals)
+kruskal.test(MeanGallsperPlant ~ Fire, data = gall_totals)
+kruskal.test(MeanGallsperPlant ~ Graze, data = gall_totals)
+kruskal.test(MeanGallsperPlant ~ Treatment, data = gall_totals)
 # no significant differences identified
 
 # frequency plot of gall totals by treatment   
-ggplot(gall_data, aes(x = GallTotal, color = Treatment)) + 
-  geom_freqpoly(binwidth = 50, lwd = 1.2, alpha = 0.5) + 
+ggplot(gall_data, aes(x = GallTotal, fill = Treatment)) + 
+  geom_histogram(binwidth = 10, alpha = 0.5) + 
   theme_bw() + 
-  labs(x = "Gall Total", y = "Plant Count", title = "Gall Total per Plant")
+  labs(x = "Gall Total", y = "Plant Count", title = "Gall Total per Plant, by Treatment")
 
 # density plot of gall totals by treatment (to account for different sample sizes)   
 ggplot(gall_data, aes(x = GallTotal, after_stat(density), color = Treatment)) + 
