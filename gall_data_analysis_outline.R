@@ -61,6 +61,13 @@ gall_data <- gall_data %>%
   dplyr::filter(PlantVol_cm3 != 0) %>% # remove two rows with vol=0
   dplyr::mutate(GallperVol = GallTotal/PlantVol_cm3) # calculate galls by plant vol
   
+# add plant density
+density_df <- readxl::read_xlsx("./data/Gall Data '23.xlsx", sheet = "Summary gall data")
+density_df <- density_df %>%
+  dplyr::select(c(PastureID, Transect, PlantTotal, TransectArea_m2)) %>%
+  dplyr::mutate(Plants_m2 = PlantTotal / TransectArea_m2)
+gall_data <- gall_data %>%
+  dplyr::left_join(density_df, by = c("PastureID", "Transect"))
 
 # check the data again
 str(gall_data)
@@ -72,7 +79,8 @@ gall_long_df <- gall_data %>%
                values_to = "GallCount") %>%
   mutate(GallCountperVol = GallCount / PlantVol_cm3,
          GallPercent = GallCount / GallTotal,
-         GallPercentperVol = GallPercent * PlantVol_cm3) %>%
+         GallPercentperVol = GallPercent * PlantVol_cm3,
+         GallCount_m2 = GallCount * Plants_m2) %>%
   mutate(across(GallPercent:GallPercentperVol, ~ replace(., is.nan(.), 0)))
 
 
@@ -86,7 +94,7 @@ gall_long_df <- gall_data %>%
 gall_binary <- gall_data %>%
    dplyr::mutate(GallsPresent = factor(ifelse(GallTotal == 0, "No", "Yes")))
 
-# summarise presence/absense per individual treatment, and across combination treatment
+# summarise presence/absence per individual treatment, and across combination treatment
 gall_binary %>%
   dplyr::group_by(Fire, GallsPresent) %>%
   dplyr::summarize(PlantCount = n()) %>%
@@ -210,17 +218,30 @@ n_galls <- length(unique(gall_long_df$GallType))
 gall_type_counts <- gall_long_df %>%
   dplyr::group_by(Fire, Graze, GallType) %>%
   dplyr::summarize(TotalCount = sum(GallCount), MeanCount = mean(GallCount), sdCount = sd(GallCount),
-                   TotalDensity = sum(GallCount)/sum(PlantVol_cm3), MeanDensity = mean(GallCountperVol), sdDensity = sd(GallCountperVol))
+                   TotalDensity = sum(GallCount)/sum(PlantVol_cm3), MeanDensity = mean(GallCountperVol), sdDensity = sd(GallCountperVol),
+                   MeanPercent = mean(GallPercent), sdPercent = sd(GallPercent), 
+                   MeanPercentperVol = mean(GallPercentperVol), sdPercentperVol = sd(GallPercentperVol))
 
 # playing with colors and themes in plots
 # gall counts by treatment
-ggplot(gall_long_df, aes(x = Treatment, y = GallCount, fill = GallType)) + 
+ggplot(gall_long_df, aes(x = Graze, y = GallCount, fill = GallType)) + 
   geom_col() + 
   facet_grid(cols = vars(Fire), scales = "free_x") + 
   theme_bw() +
   theme(axis.text.x = element_text(angle=45, hjust = 1)) +
   scale_fill_ucscgb() +
   ggtitle("Total Galls by Treatment and Gall Type")
+
+ggplot(gall_long_df, aes(x = Graze, y = GallPercentperVol, fill = GallType)) + 
+  geom_col() + 
+  facet_grid(cols = vars(Fire), scales = "free_x") + 
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=45, hjust = 1)) +
+  scale_fill_ucscgb() +
+  labs(x = "Treament", y = "Gall Count per cm^3")+ 
+  ggtitle("Gall per Plant Density by Treatment and Gall Type")
+
+
 ggplot(gall_long_df, aes(x = Treatment, y = GallCount, fill = GallType)) + 
   geom_col() + 
   facet_grid(cols = vars(Graze), scales = "free_x") + 
