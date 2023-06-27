@@ -13,7 +13,7 @@ library(emmeans) # treatment contrasts
 library(rstatix) # dplyr-friendly stat  calculations
 
 # set directory if working outside RProj
-# setwd("path/to/gall/data/folder")
+setwd("path/to/gall/data/folder")
 
 # load data
 gall_data <- readxl::read_xlsx("./data/Gall Data '23.xlsx", sheet = "Gall Data")
@@ -35,7 +35,7 @@ gall_data <- dplyr::mutate(gall_data,
 
 # add columns for each treatment type
 gall_data <- dplyr::mutate(gall_data,
-                           Fire = factor(ifelse(PastureID == "1B" | PastureID == "2B" | PastureID == "EX-2B",
+                           Fire = factor(ifelse(PastureID == "1B" | PastureID == "2B" | PastureID == "EX-2B" | PastureID == "EX-1B",
                                          "Burn", "NoBurn"), levels = c("NoBurn", "Burn")),
                            Graze = factor(ifelse(PastureID == "1B" | PastureID == "2A", "Spring",
                                           ifelse(PastureID == "1A" | PastureID == "2B", "Fall", "NoGraze")), 
@@ -70,7 +70,10 @@ gall_long_df <- gall_data %>%
   pivot_longer(cols = c(DaisyGall:Greenthorn),
                names_to = "GallType",
                values_to = "GallCount") %>%
-  mutate(GallCountperVol = GallCount / PlantVol_cm3)
+  mutate(GallCountperVol = GallCount / PlantVol_cm3,
+         GallPercent = GallCount / GallTotal,
+         GallPercentperVol = GallPercent * PlantVol_cm3) %>%
+  mutate(across(GallPercent:GallPercentperVol, ~ replace(., is.nan(.), 0)))
 
 
 ########
@@ -81,7 +84,7 @@ gall_long_df <- gall_data %>%
 
 # create a binary factor for presence/absence of galls on a plant
 gall_binary <- gall_data %>%
-   dplyr::mutate(GallsPresent = factor(ifelse(GallTotal == 0, 0, 1)))
+   dplyr::mutate(GallsPresent = factor(ifelse(GallTotal == 0, "No", "Yes")))
 
 # summarise presence/absense per individual treatment, and across combination treatment
 gall_binary %>%
@@ -107,13 +110,37 @@ gall_presence %>%
   kable_classic_2(full_width = F) %>%  # formatting
   save_kable("./viz/gall_presence_table.png")  # save it as a .png file
 
+# make plots of presence/absence
+ggplot(gall_binary, aes(x = GallsPresent, fill = Fire)) + 
+  geom_bar(position = "dodge") + 
+  theme_bw() + scale_fill_startrek() + 
+  facet_wrap(vars(Graze)) + 
+  labs(x = "Galls Present", y = "Plant Count", title = "Gall Presence by Treatment")
+ggplot(gall_binary, aes(x = GallsPresent, fill = Graze)) + 
+  geom_bar(position = "dodge") + 
+  theme_bw() + scale_fill_startrek() + 
+  facet_wrap(vars(Fire)) + 
+  labs(x = "Galls Present", y = "Plant Count", title = "Gall Presence by Treatment")
+ggplot(gall_binary, aes(x = GallsPresent, fill = as.factor(Transect))) + 
+  geom_bar(position = "dodge") + 
+  theme_bw() + scale_fill_startrek() + 
+  facet_wrap(vars(Treatment)) + 
+  labs(x = "Galls Present", y = "Plant Count", title = "Gall Presence by Treatment, Transect")
+
+
 #---#
 
 ## Does total number of galls per plant vary by treatment?
 gall_totals <- gall_data %>% 
-  dplyr::group_by(Fire, Graze, Treatment) %>% 
-  dplyr::summarize(GallTotal = sum(GallTotal), PlantTotal = n()) %>%
-  dplyr::mutate(GallsperPlant = GallTotal / PlantTotal) # calculate galls per plant to account for dif sample sizes
+  dplyr::group_by(Fire, Graze) %>% 
+  dplyr::summarize(GallTotal = sum(GallTotal), PlantTotal = n(), TotalPlantVol = sum(PlantVol_cm3),
+                   MeanPlantVol = mean(PlantVol_cm3), MeanPlantDensity = mean(GallperVol)) %>%
+  dplyr::mutate(MeanGallsperPlant = GallTotal / PlantTotal) # calculate galls per plant to account for dif sample sizes
+
+# make table of gall totals
+kbl(gall_totals, caption = "Gall Summary by Treatment") %>%
+  kable_minimal(full_width = F) %>%
+  save_kable("./viz/gall_summary_table.png")
 
 # perform Kruskal-Wallis rank sum test for significant differences in gall totals by treatment
 # Note: Kruskal-Wallis test is a non-parametric test comparable to ANOVA, but does not make any underlying assumptions (ie linearity, normality) about the data
