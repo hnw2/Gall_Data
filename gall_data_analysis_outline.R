@@ -292,7 +292,28 @@ cor(gall_data$PlantVol_cm3, gall_data$GallTotal, method = "spearman")
 # seems like there is a moderately positive correlation
 
 # visualize relationship by Treatment
+ggplot(gall_data, aes(x = PlantVol_cm3, y=GallTotal)) + 
+  geom_point(aes(col = Treatment), size = 3, alpha = 0.6) + 
+  theme_minimal() + lims(x = c(0, 300000), y = c(0, 300)) + 
+  labs(x = expression("Plant Volume cm"^3), title = "Gall Total by Plant Volume, Treatment")
 
+# visualize relationship by Treatment, Gall Type
+ggplot(gall_long_df, aes(x = PlantVol_cm3, y=GallPercent)) + 
+  geom_point(aes(col = Treatment), size = 3, alpha = 0.6) + 
+  scale_color_nejm() +
+  theme_bw() + lims(x = c(0, 300000), y = c(0.001, 1)) + 
+  facet_wrap(vars(GallType)) + 
+  theme(axis.text.x = element_text(angle=45, hjust = 1)) + 
+  labs(x = expression("Plant Volume cm"^3), title = "Gall Percentage by Plant Volume, Treatment, Gall Type \n Excludes 0-Counts")
+
+# visualize relationship by Treatment, Gall Type
+ggplot(gall_long_df, aes(x = PlantVol_cm3, y=GallPercent)) + 
+  geom_point(aes(col = GallType), size = 3, alpha = 0.6) + 
+  scale_color_igv() +
+  theme_bw() + lims(x = c(0, 300000), y = c(.001, 1)) + 
+  facet_wrap(vars(Treatment)) + 
+  theme(axis.text.x = element_text(angle=45, hjust = 1)) + 
+  labs(x = expression("Plant Volume cm"^3), title = "Gall Percentage by Plant Volume, Treatment, Gall Type \n Excludes 0-Counts")
 
 # look at average gall per plant volume by treatments
 gall_data %>%
@@ -308,10 +329,8 @@ ggplot(gall_long_df, aes(x = Graze, y = GallCountperVol, fill = GallType)) +
   geom_col() + facet_grid(cols = vars(Fire)) + 
   ggtitle("Total Galls per Plant Volume by Fire, Graze Treatments and Gall Type")
 
-ggplot(gall_long_df, aes(x = Graze, y = GallCount, fill = GallType)) + 
+ggplot(gall_long_df, aes(x = Graze, y = GallPercent, fill = GallType)) + 
   geom_col() + facet_grid(cols = vars(Fire)) + 
   ggtitle("Total Gall Counts by Fire, Graze Treatments and Gall Type")
 
-ggplot(gall_long_df, aes(x = PlantVol_cm3, y = GallCount)) + 
-  geom_point(aes(col = Treatment)) + 
-  facet_wrap(vars(GallType))
+
