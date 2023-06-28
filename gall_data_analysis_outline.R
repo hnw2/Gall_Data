@@ -11,6 +11,8 @@ library(kableExtra) # pretty tables
 library(ggsci) # colors
 library(emmeans) # treatment contrasts
 library(rstatix) # dplyr-friendly stat  calculations
+library(pscl) # zero-inflated Poisson regression
+library(lmtest) # model comparisons
 
 # set directory if working outside RProj
 #setwd("path/to/gall/data/folder")
@@ -278,6 +280,15 @@ ggplot(gall_long_df, aes(x = Treatment, y = GallCount, fill = GallType)) +
   ggtitle("Total Galls per Graze:Fire Treatment, by Gall Type")
 
 
+# look at average gall per plant volume by treatments
+gall_data %>%
+  group_by(Fire, Graze) %>%
+  filter(PlantVol_cm3 != 0) %>%
+  summarize(avg.gall = mean(GallperVol))
+
+ggplot(gall_data, (aes(x = Fire, y = GallperVol, fill = Graze))) + 
+  geom_violin(draw_quantiles = TRUE) + 
+  ggtitle("Total Galls per Plant Volume by Treatment")
 
 
 ########
@@ -289,7 +300,14 @@ ggplot(gall_long_df, aes(x = Treatment, y = GallCount, fill = GallType)) +
 cor(gall_data$PlantVol_cm3, gall_data$GallTotal)
 cor(gall_data$PlantVol_cm3, gall_data$GallTotal, method = "kendall")
 cor(gall_data$PlantVol_cm3, gall_data$GallTotal, method = "spearman")
-# seems like there is a moderately positive correlation
+# seems like there is a moderate positive correlation
+
+# Are galls more dense on larger plants?
+cor(gall_data$GallperVol, gall_data$PlantVol_cm3)
+cor(gall_data$PlantVol_cm3, gall_data$GallperVol, method = "kendall")
+cor(gall_data$PlantVol_cm3, gall_data$GallperVol, method = "spearman")
+# no correlation of note
+
 
 # visualize relationship by Treatment
 ggplot(gall_data, aes(x = PlantVol_cm3, y=GallTotal)) + 
@@ -315,22 +333,31 @@ ggplot(gall_long_df, aes(x = PlantVol_cm3, y=GallPercent)) +
   theme(axis.text.x = element_text(angle=45, hjust = 1)) + 
   labs(x = expression("Plant Volume cm"^3), title = "Gall Percentage by Plant Volume, Treatment, Gall Type \n Excludes 0-Counts")
 
-# look at average gall per plant volume by treatments
-gall_data %>%
-  group_by(Fire, Graze) %>%
-  filter(PlantVol_cm3 != 0) %>%
-  summarize(avg.gall = mean(GallperVol))
-
-ggplot(gall_data, (aes(x = Fire, y = GallperVol, fill = Graze))) + 
-  geom_violin(draw_quantiles = TRUE) + 
-  ggtitle("Total Galls per Plant Volume by Treatment")
-
 ggplot(gall_long_df, aes(x = Graze, y = GallCountperVol, fill = GallType)) + 
   geom_col() + facet_grid(cols = vars(Fire)) + 
+  scale_fill_ucscgb() +
+  theme_bw() + 
   ggtitle("Total Galls per Plant Volume by Fire, Graze Treatments and Gall Type")
 
 ggplot(gall_long_df, aes(x = Graze, y = GallPercent, fill = GallType)) + 
   geom_col() + facet_grid(cols = vars(Fire)) + 
   ggtitle("Total Gall Counts by Fire, Graze Treatments and Gall Type")
+
+# Estimate gall abundance using a zero-inflated poisson regression model
+mod0 <- pscl::zeroinfl(GallCount ~ Fire * Graze + Plants_m2 + GallType, data = gall_long_df, dist = "poisson")
+mod1 <- pscl::zeroinfl(GallCount ~ Fire * Graze + Plants_m2, data = gall_long_df, dist = "poisson")
+mod2 <- pscl::zeroinfl(GallCount ~ Fire * Graze, data = gall_long_df, dist = "poisson")
+
+
+########
+## -- Effects of Plant Community on Gall Abundance
+########
+
+
+
+########
+## -- Modeling Gall Abundance by Treatment, Gall Type
+########
+
 
 
