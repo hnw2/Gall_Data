@@ -222,6 +222,11 @@ gall_type_counts <- gall_long_df %>%
                    MeanPercent = mean(GallPercent), sdPercent = sd(GallPercent), 
                    MeanPercentperVol = mean(GallPercentperVol), sdPercentperVol = sd(GallPercentperVol))
 
+gall_type_counts %>%
+  kbl(caption = "Gall Type summary Table") %>%
+  kable_classic_2() %>%
+  save_kable("./viz/galltype_summary_table.png")
+
 # playing with colors and themes in plots
 # gall counts by treatment
 ggplot(gall_long_df, aes(x = Graze, y = GallCount, fill = GallType)) + 
@@ -285,6 +290,9 @@ cor(gall_data$PlantVol_cm3, gall_data$GallTotal)
 cor(gall_data$PlantVol_cm3, gall_data$GallTotal, method = "kendall")
 cor(gall_data$PlantVol_cm3, gall_data$GallTotal, method = "spearman")
 # seems like there is a moderately positive correlation
+
+# visualize relationship by Treatment
+
 
 # look at average gall per plant volume by treatments
 gall_data %>%
