@@ -229,6 +229,19 @@ gall_type_counts %>%
   kable_classic_2() %>%
   save_kable("./viz/galltype_summary_table.png")
 
+# make table of gall counts by type and treatment 
+galltypes <- gall_long_df %>% 
+  group_by(GallType, Treatment) %>% 
+  summarize(GallTotals = sum(GallCount)) %>%
+  pivot_wider(names_from = "Treatment", values_from = "GallTotals")
+
+galltypes_mat <- as.matrix(galltypes[,2:7])
+galltypes$TypeTotal <- rowSums(galltypes_mat)
+galltypes <- galltypes %>%
+  dplyr::bind_rows(summarise(.,
+                             across(where(is.numeric), sum),
+                             across(where(is.character), ~"TreatmentTotal")))
+
 # playing with colors and themes in plots
 # gall counts by treatment
 ggplot(gall_long_df, aes(x = Graze, y = GallCount, fill = GallType)) + 
@@ -347,6 +360,8 @@ ggplot(gall_long_df, aes(x = Graze, y = GallPercent, fill = GallType)) +
 mod0 <- pscl::zeroinfl(GallCount ~ Fire * Graze + Plants_m2 + GallType, data = gall_long_df, dist = "poisson")
 mod1 <- pscl::zeroinfl(GallCount ~ Fire * Graze + Plants_m2, data = gall_long_df, dist = "poisson")
 mod2 <- pscl::zeroinfl(GallCount ~ Fire * Graze, data = gall_long_df, dist = "poisson")
+
+# TODO: plot models on top of empirical data
 
 
 ########
